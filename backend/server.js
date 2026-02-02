@@ -7,7 +7,7 @@ const path = require('path');
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const movieRoutes = require('./routes/movieRoutes');
-
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -17,7 +17,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.use('/api/movies', movieRoutes);
-
+app.use('/api/users', userRoutes);
 
 const connectDB = async () => {
   try {
