@@ -1,0 +1,29 @@
+{
+  "name": "cinema-theater",
+  "version": "1.0.0",
+  "description": "This is my first ever attempt on using github for my own personal project instead of my work's.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VnHn28/CinemaTheater.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/VnHn28/CinemaTheater/issues"
+  },
+  "homepage": "https://github.com/VnHn28/CinemaTheater#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.1.5"
+  }
+}
