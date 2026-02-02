@@ -1,33 +1,36 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const path = require('path');
+const mongoose = require('mongoose');
 
-// Load env vars
-dotenv.config({ path: path.join(__dirname, '../config.env') });
+const path = require('path');
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const movieRoutes = require('./routes/movieRoutes');
+
 
 const app = express();
+const port = process.env.PORT || 5000;
 
-// Body parser
-app.use(express.json());
-
-// Enable CORS
 app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-app.get('/', (req, res) => {
-    res.send('Cinema booking API is running...');
-});
+app.use('/api/movies', movieRoutes);
 
-const PORT = process.env.PORT || 5000;
 
-const server = app.listen(
-    PORT,
-    console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`)
-);
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGO_URI);
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+  } catch (error) {
+    console.log(error);
+    process.exit(1);
+  }
+};
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-    console.log(`Error: ${err.message}`);
-    // Close server & exit process
-    server.close(() => process.exit(1));
+connectDB().then(() => {
+  app.listen(port, () => {
+    console.log(`Server is running on port: ${port}`);
+  });
 });

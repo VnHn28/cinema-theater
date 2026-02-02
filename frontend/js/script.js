@@ -1,97 +1,83 @@
 $(document).ready(function(){
-    const arrMovie = [];
-    const arrMovieSeating = [];
-    let seatingIndex = 0;
-    let whichMovieSeats; // The index of the movie whose seats are being displayed
-    let seatSelection; // How many seats are left to pick
-    let numofseatstoSelect; // The original number of seats the user wanted
-    let arrSelectedseat = []; // Holds currently picked seats {row, col}
+    let currentMovie; // Holds the movie object whose seats are being displayed
+    let selectedSeats = []; // Holds currently picked seats {row, col}
+    let numSeatsToSelect; // The original number of seats the user wanted
 
     $("#bottom").hide();
 
     $("#btnAddMovie").click(function(){
-        let duplicateSchedule = false;
-
         if ($("#txtTitle").val().trim() === "") {
             alert("Please enter a movie title!");
             return;
         }
-        if(arrMovie.length){
-            const newMovieTime = $("#cmbTime option:selected").text();
-            const newMovieStudio = $("#cmbStudio option:selected").val();
-            for (const movie of arrMovie) {
-                if(movie.time === newMovieTime && movie.studio === newMovieStudio){
-                    duplicateSchedule = true;
-                    break;
-                }
-            }
-        }
 
-        if (duplicateSchedule){
-            alert("Unable to set this schedule for this cinema!");
-        } else {
-            const movie = {
-                title: $("#txtTitle").val(),
-                time: $("#cmbTime option:selected").text(),
-                studio: $("#cmbStudio option:selected").val(),
-                index: seatingIndex
-            };
+        const movie = {
+            title: $("#txtTitle").val(),
+            time: $("#cmbTime option:selected").text(),
+            studio: $("#cmbStudio option:selected").val(),
+        };
 
-            arrMovie.push(movie);
-            seatingIndex++;
-
-            generateSeats();
+        $.ajax({
+            url: 'http://localhost:5001/api/movies',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(movie),
+        })
+        .done(function() {
             displaySchedule();
-        }
+        })
+        .fail(function(jqXHR) {
+            alert(jqXHR.responseJSON.message);
+        });
     });
 
-    function generateSeats(){
-        const arrRow = [];
-        for (let i = 0; i < 15; i++) {
-            const arrCollumn = [];
-            const row = String.fromCharCode(i + 65);
-            for (let j = 0; j < 18; j++) {
-                const seatId = row + (j < 10 ? '0' + j : j);
-                const objSeat = {
-                    id: seatId,
-                    status: "non", // 'non', 'picked', 'booked'
-                    row: i,
-                    col: j
-                };
-                arrCollumn.push(objSeat);
-            }
-            arrRow.push(arrCollumn);
-        }
-        arrMovieSeating.push(arrRow);
-    }
 
     $("#cmbSchedule").change(displaySchedule);
 
     function displaySchedule(){
         const thisStudio = $("#cmbSchedule option:selected").val();
         const timeTable = $("#timeTable");
-        $("#timeTable").empty();
-        for (const movie of arrMovie) {
-            if(movie.studio === thisStudio){
+        
+        $.ajax({
+            url: `http://localhost:5001/api/movies/studio/${thisStudio}`,
+            type: 'GET',
+        })
+        .done(function(movies) {
+            timeTable.empty();
+            for (const movie of movies) {
                 const newSchedule = $("<div>", {
                     class: 'movieSchedule',
                     text: `${movie.time} _ ${movie.title}`,
-                    'data-index': movie.index
+                    'data-id': movie._id, // Use the movie's ID from the database
                 });
                 timeTable.append(newSchedule);
             }
-        }
+        })
+        .fail(function(err) {
+            console.error(err);
+        });
     }
 
+
     $("body").on("click", ".movieSchedule", function(){
-        whichMovieSeats = $(this).data('index');
-        displaySeats();
+        const movieId = $(this).data('id');
+        $.ajax({
+            url: `http://localhost:5001/api/movies/${movieId}`,
+            type: 'GET',
+        })
+        .done(function(movie) {
+            currentMovie = movie;
+            displaySeats();
+        })
+        .fail(function(err) {
+            console.error(err);
+        });
     });
 
     function displaySeats(){
-        if (typeof whichMovieSeats === 'undefined') return;
+        if (!currentMovie) return;
 
-        const movieSeating = arrMovieSeating[whichMovieSeats];
+        const movieSeating = currentMovie.seats;
         const seatsContainer = $("#seats").empty();
 
         for (let i = 0; i < 15; i++) {
@@ -113,6 +99,10 @@ $(document).ready(function(){
                         seat.addClass("availableSeat");
                     } else if(seatData.status === "booked"){
                         seat.addClass("bookedSeat");
+                    } else if (seatData.status === 'picked') {
+                        // This handles the case where the user navigates away and back
+                        // while seats are selected but not booked.
+                        seat.addClass("availableSeat").css({"background-color": '#fec700'});
                     }
                     seatsContainer.append(seat);
                 }
@@ -120,84 +110,90 @@ $(document).ready(function(){
         }
     }
 
-    $("#btnSelect").click(function(){
+    $("#btnSelect").click(function() {
         const numSeats = parseInt($("#numSeats").val(), 10);
+
         if (isNaN(numSeats) || numSeats <= 0) {
             alert("Please enter a valid number of seats.");
             return;
         }
 
-        seatSelection = numSeats;
-        numofseatstoSelect = numSeats;
-        arrSelectedseat = []; // Reset previous selections
+        numSeatsToSelect = numSeats;
+        selectedSeats = []; // Reset previous selections
 
         $("#bottom").show();
-        $("#seatLeft").text("Seats to pick: " + seatSelection);
+        $("#seatLeft").text("Seats to pick: " + numSeatsToSelect);
     });
 
     // --- Seat Interaction Event Handlers ---
 
-    $("body").on("mouseenter", ".availableSeat", function(){
+    $("body").on("mouseenter", ".availableSeat", function() {
         $(this).fadeTo("fast", 0.8);
-    }).on("mouseleave", ".availableSeat", function(){
+    }).on("mouseleave", ".availableSeat", function() {
         $(this).fadeTo("fast", 1);
     });
 
-    $("body").on("click", ".availableSeat", function(){
-        if (typeof seatSelection === 'undefined' || numofseatstoSelect <= 0) {
-            alert("Please first select the number of seats you want to book.");
+    $("body").on("click", ".availableSeat", function() {
+        if (!currentMovie || !numSeatsToSelect) {
+            alert("Please select a movie and the number of seats first.");
             return;
         }
 
         const seat = $(this);
-        const seatStatus = seat.data('status');
         const seatRow = seat.data('row');
         const seatCol = seat.data('col');
+        const isPicked = seat.data('status') === 'picked';
 
-        if (seatStatus === 'picked') {
+        if (isPicked) {
             // DESELECT a seat
-            seat.css({"background-color": 'grey'}).data('status', 'non');
-            seatSelection++;
-            arrSelectedseat = arrSelectedseat.filter(s => !(s.row === seatRow && s.col === seatCol));
-        } else if (seatStatus === 'non') {
+            seat.css({ "background-color": 'grey' }).data('status', 'non');
+            selectedSeats = selectedSeats.filter(s => !(s.row === seatRow && s.col === seatCol));
+        } else {
             // SELECT a seat
-            if (seatSelection > 0) {
-                seat.css({"background-color": '#fec700'}).data('status', 'picked');
-                seatSelection--;
-                arrSelectedseat.push({ row: seatRow, col: seatCol });
+            if (selectedSeats.length < numSeatsToSelect) {
+                seat.css({ "background-color": '#fec700' }).data('status', 'picked');
+                selectedSeats.push({ row: seatRow, col: seatCol });
             } else {
-                alert(`You have already selected ${numofseatstoSelect} seat(s).`);
+                alert(`You have already selected ${numSeatsToSelect} seat(s).`);
             }
         }
-        $("#seatLeft").text("Seats to pick: " + seatSelection);
+        $("#seatLeft").text("Seats to pick: " + (numSeatsToSelect - selectedSeats.length));
     });
 
-    $("#btnBook").click(function(){
-        if (seatSelection > 0) {
-            alert(`Please select ${seatSelection} more seat(s) to continue.`);
+    $("#btnBook").click(function() {
+        if (!currentMovie) {
+            alert("Please select a movie first.");
             return;
         }
-        if (arrSelectedseat.length === 0) {
-            alert("No seats were selected to book.");
+        if (selectedSeats.length !== numSeatsToSelect) {
+            alert(`Please select ${numSeatsToSelect - selectedSeats.length} more seat(s).`);
             return;
         }
 
-        const movieSeating = arrMovieSeating[whichMovieSeats];
-        for (const ticket of arrSelectedseat) {
-            const thisRow = ticket.row;
-            const thisCol = ticket.col;
-            movieSeating[thisRow][thisCol].status = "booked";
-        }
-
-        // Reset state and UI
-        seatSelection = undefined;
-        numofseatstoSelect = 0;
-        arrSelectedseat = [];
-        $("#bottom").hide();
-        displaySeats();
+        $.ajax({
+            url: `http://localhost:5001/api/movies/${currentMovie._id}/seats`,
+            type: 'PATCH',
+            contentType: 'application/json',
+            data: JSON.stringify({ seats: selectedSeats }),
+        })
+        .done(function() {
+            alert('Seats booked successfully!');
+            selectedSeats = [];
+            numSeatsToSelect = 0;
+            currentMovie = null;
+            $("#bottom").hide();
+            $("#seats").empty();
+            displaySchedule();
+        })
+        .fail(function(jqXHR) {
+            alert('Error booking seats: ' + jqXHR.responseJSON.message);
+        });
     });
 
-    $("body").on("click", ".bookedSeat", function(){
+    $("body").on("click", ".bookedSeat", function() {
         alert("This seat is already booked!");
     });
+
+    // Initial load of the schedule
+    displaySchedule();
 });
