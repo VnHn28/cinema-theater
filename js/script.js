@@ -1,34 +1,50 @@
 $(document).ready(function(){
-    var arrMovie = [];
-    var movie;
-    var objSeat;
-    var arrMovieSeating = [];
-    var seatingIndex=0;
-    var whichmovieSeats;
-    var seatSelection;
-    var numofseatstoSelect;
+    let arrMovie = [];
+    let movie;
+    let objSeat;
+    let arrMovieSeating = [];
+    let seatingIndex=0;
+    let whichmovieSeats;
+    let seatSelection;
+    let numofseatstoSelect;
 
     //if(seatSelection<=0){
         $("#bottom").hide();
     //}
 
     $("#btnAddMovie").click(function(){
-        movie = new Object();
-        movie.title=$("#txtTitle").val();
-        movie.time=$("#cmbTime option:selected").text();
-        movie.studio=$("#cmbStudio option:selected").val();
-        movie.index=seatingIndex;
+        let duplicateSchedule = false;
+        if(arrMovie.length){
+            for (var i = 0; i < arrMovie.length; i++) {
+                let thisMovie = arrMovie[i];
+                let movie_time=$("#cmbTime option:selected").text();
+                let movie_studio=$("#cmbStudio option:selected").val();
+                if(thisMovie.time==movie_time && thisMovie.studio==movie_studio){
+                    duplicateSchedule = true;
+                    break;
+                }
+            }
+        }
+        if (duplicateSchedule){
+            alert("Unable to set this schedule for this cinema!");
+        } else {
+            movie = new Object();
+            movie.title=$("#txtTitle").val();
+            movie.time=$("#cmbTime option:selected").text();
+            movie.studio=$("#cmbStudio option:selected").val();
+            movie.index=seatingIndex;
 
-        arrMovie.push(movie);
-        seatingIndex++;
+            arrMovie.push(movie);
+            seatingIndex++;
 
-        generateSeats();
+            generateSeats();
 
-        displaySchedule();
+            displaySchedule();
+        }
     })
 
     function generateSeats(){
-        var arrRow=[];
+        let arrRow=[];
         //$("#seats").innerHTML=t;
         for (var i = 0; i < 15; i++) {
             var arrCollumn = [];
@@ -42,7 +58,7 @@ $(document).ready(function(){
                     objSeat.id = row+j;
                 }
                 objSeat.status = "non";
-                objSeat.row = i; //why not use 'row' directly and not 'i'
+                objSeat.row = row;
                 objSeat.col = j;
                 arrCollumn.push(objSeat);
             }
@@ -126,6 +142,7 @@ $(document).ready(function(){
 
         $("#bottom").show();
         $("#seatLeft").html("Seats to pick: "+seatSelection);
+        alert("Seats to pick: "+seatSelection);
         mTix();
 
     })
@@ -136,19 +153,19 @@ $(document).ready(function(){
 
         if(seatSelection>-1){
             $("body").on("mouseenter", ".availableSeat", function(){
-                      $(this).fadeTo("fast",0.8);
+                $(this).fadeTo("fast",0.8);
             });
             $("body").on("mouseleave", ".availableSeat", function(){
-                       $(this).fadeTo("fast", 1);
+                $(this).fadeTo("fast", 1);
             });
 
-            if(seatSelection>0){
+            if(seatSelection>0){ 
                 $("body").on("click", ".availableSeat", function(){
                     thisMovie = $(this).prop('mov');
 
                     if($(this).prop('value')=='non'){
                         $(this).css({"background-color":'#fec700'});
-                        $(this).prop('value')='picked';
+                        $(this).prop('value', 'picked');
                         
                         objTicket = new Object();
                         objTicket.index = $(this).prop('arr');
@@ -156,17 +173,20 @@ $(document).ready(function(){
                         objTicket.col = $(this).prop('col');
                         arrSelectedseat.push(objTicket);
 
-                        alert(arrSelectedseat.length);
-                        seatSelection++;
+                        // alert(arrSelectedseat.length);
+                        seatSelection--;
+                         alert(seatSelection);
                     } else if($(this).prop('value')=="picked"){
+                        console.log("clicked");
                         for (var i = 0; i < arrSelectedseat.length; i++) {
                             if(arrSelectedseat[i].index==$(this).prop('arr')){
                                 arrSelectedseat.splice(i,1);
                             }
                         }
                         $(this).css({"background-color":'grey'});
-                        $(this).prop('value')='non';
-                        seatSelection--;
+                        $(this).prop('value', 'non');
+                        seatSelection++;
+                        // alert(seatSelection);
                     }
                     //alert($(this).val());
                     
